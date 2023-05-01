@@ -1,0 +1,3 @@
+fastapi
+uvicorn
+-i https://pypi.org/simple
