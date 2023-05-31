@@ -87,17 +87,14 @@ async def get():
 @app.post("/{id}")
 async def dataEsp(request: Request, id: int):
     data = await request.json()
-    data = {
-        'data': data
-    }
     if id not in manager.list_id:
         return JSONResponse(content=data, status_code=status.HTTP_400_BAD_REQUEST)
     try:
         for connection in manager.active_connections:
             index = manager.active_connections.index(connection)
             if manager.list_id[index] == id:
+                await connection.send_text('{'+'"data": "{}"'.format(data)+'}')
                 print(str(data))
-                await connection.send_text(str(data))
     except Exception as e:
         return JSONResponse(content=data, status_code=status.HTTP_400_BAD_REQUEST)
     return JSONResponse(content=data, status_code=status.HTTP_200_OK)
