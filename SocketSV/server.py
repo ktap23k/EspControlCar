@@ -1,5 +1,5 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, status
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 
 app = FastAPI()
 
@@ -82,8 +82,25 @@ manager = ConnectionManager()
 
 @app.get("/")
 async def get():
-    return HTMLResponse(html)
+    return FileResponse("./html/config .html", media_type="text/html")
 
+@app.post("/{id}")
+async def dataEsp(request: Request, id: int):
+    data = await request.json()
+    data = {
+        'data': data
+    }
+    if id not in manager.list_id:
+        return JSONResponse(content=data, status_code=status.HTTP_400_BAD_REQUEST)
+    try:
+        for connection in manager.active_connections:
+            index = manager.active_connections.index(connection)
+            if manager.list_id[index] == id:
+                print(str(data))
+                await connection.send_text(str(data))
+    except Exception as e:
+        return JSONResponse(content=data, status_code=status.HTTP_400_BAD_REQUEST)
+    return JSONResponse(content=data, status_code=status.HTTP_200_OK)
 
 @app.websocket("/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: int):
@@ -95,7 +112,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: int):
             await manager.broadcast(websocket, '{'+'"data": "{}"'.format(data)+'}')
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-        await manager.broadcast(f"Client #{client_id} left the chat")
+        await manager.broadcast(websocket, f"Client #{client_id} left the chat")
 
 if __name__ == "__main__":
     import uvicorn
